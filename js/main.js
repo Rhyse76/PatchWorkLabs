@@ -34,10 +34,10 @@ if (navToggle && mobileNav) {
 }
 
 // Active nav link highlighting
-const currentFile = window.location.pathname.split('/').pop() || 'index.html';
+const currentFile = window.location.pathname.split('/').pop() || '/';
 document.querySelectorAll('.nav-links a, .mobile-nav a').forEach(link => {
   const href = link.getAttribute('href');
-  if (href && (href === currentFile || (currentFile === '' && href === 'index.html'))) {
+  if (href && href === currentFile) {
     link.classList.add('active');
   }
 });
