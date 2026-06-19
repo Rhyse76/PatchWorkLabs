@@ -241,3 +241,146 @@ if (contactForm) {
     }
   });
 }
+
+// === TOPOLOGY DIAGRAM ===
+(function () {
+  const canvas = document.getElementById('topology');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const A = '45, 232, 163';
+
+  const nodeData = [
+    { label: 'DNS',   nx: 0.20, ny: 0.14 },
+    { label: 'CDN',   nx: 0.72, ny: 0.13 },
+    { label: 'LB',    nx: 0.44, ny: 0.28 },
+    { label: 'SSL',   nx: 0.78, ny: 0.32 },
+    { label: 'EC2',   nx: 0.38, ny: 0.48 },
+    { label: 'VPC',   nx: 0.72, ny: 0.50 },
+    { label: 'S3',    nx: 0.14, ny: 0.58 },
+    { label: 'API',   nx: 0.55, ny: 0.64 },
+    { label: 'APP',   nx: 0.82, ny: 0.68 },
+    { label: 'DB',    nx: 0.52, ny: 0.82 },
+    { label: 'Git',   nx: 0.17, ny: 0.80 },
+    { label: 'CI/CD', nx: 0.35, ny: 0.80 },
+  ];
+
+  const edges = [
+    [0, 2],  // DNS → LB
+    [1, 2],  // CDN → LB
+    [2, 3],  // LB  → SSL
+    [2, 4],  // LB  → EC2
+    [3, 8],  // SSL → APP
+    [4, 5],  // EC2 → VPC
+    [4, 6],  // EC2 → S3
+    [4, 7],  // EC2 → API
+    [4, 11], // EC2 → CI/CD
+    [7, 8],  // API → APP
+    [7, 9],  // API → DB
+    [10, 11],// Git → CI/CD
+    [0, 1],  // DNS ↔ CDN
+  ];
+
+  let nodes = [];
+  let mouse = { x: -999, y: -999 };
+  let rect = null;
+  let raf = null;
+
+  function init() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    rect = canvas.getBoundingClientRect();
+    nodes = nodeData.map(d => ({
+      label: d.label,
+      x:  d.nx * canvas.width,
+      y:  d.ny * canvas.height,
+      ox: d.nx * canvas.width,
+      oy: d.ny * canvas.height,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+    }));
+  }
+
+  window.addEventListener('mousemove', e => {
+    if (!rect) return;
+    mouse.x = e.clientX - rect.left;
+    mouse.y = e.clientY - rect.top;
+  });
+
+  window.addEventListener('scroll', () => { if (canvas) rect = canvas.getBoundingClientRect(); }, { passive: true });
+
+  window.addEventListener('resize', () => {
+    cancelAnimationFrame(raf);
+    init();
+    loop();
+  });
+
+  function loop() {
+    const now = performance.now() / 1000;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const pad = 45;
+
+    nodes.forEach(n => {
+      n.vx += (n.ox - n.x) * 0.0003;
+      n.vy += (n.oy - n.y) * 0.0003;
+      n.x += n.vx;
+      n.y += n.vy;
+      if (n.x < pad || n.x > canvas.width  - pad) n.vx *= -1;
+      if (n.y < pad || n.y > canvas.height - pad) n.vy *= -1;
+      const dx = mouse.x - n.x, dy = mouse.y - n.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 0 && d < 160) { n.x += dx * 0.007; n.y += dy * 0.007; }
+    });
+
+    // Edges
+    edges.forEach(([i, j], idx) => {
+      const a = nodes[i], b = nodes[j];
+      const near = Math.hypot(mouse.x - a.x, mouse.y - a.y) < 160 ||
+                   Math.hypot(mouse.x - b.x, mouse.y - b.y) < 160;
+      const pulse = 0.22 + 0.14 * Math.sin(now * 1.3 + idx * 0.85);
+      ctx.save();
+      ctx.strokeStyle = `rgba(${A}, ${near ? Math.min(pulse + 0.45, 0.92) : pulse})`;
+      ctx.lineWidth   = near ? 1.3 : 0.7;
+      ctx.setLineDash([5, 7]);
+      ctx.lineDashOffset = -(now * 18) + idx * 12;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // Nodes
+    nodes.forEach(n => {
+      const near = Math.hypot(mouse.x - n.x, mouse.y - n.y) < 160;
+      const r = near ? 9 : 6;
+
+      if (near) {
+        const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, 34);
+        g.addColorStop(0, `rgba(${A}, 0.22)`);
+        g.addColorStop(1, `rgba(${A}, 0)`);
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, 34, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+      }
+
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle   = `rgba(${A}, ${near ? 0.32 : 0.10})`;
+      ctx.fill();
+      ctx.strokeStyle = `rgba(${A}, ${near ? 1 : 0.50})`;
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+
+      ctx.font      = `bold 9px "JetBrains Mono", monospace`;
+      ctx.fillStyle = `rgba(${A}, ${near ? 1 : 0.60})`;
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, n.x, n.y + r + 13);
+    });
+
+    raf = requestAnimationFrame(loop);
+  }
+
+  init();
+  loop();
+}());

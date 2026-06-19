@@ -411,6 +411,17 @@ em { color: var(--text-primary); font-style: italic; }
   letter-spacing: 0.1em;
   font-family: var(--font-mono);
 }
+/* === TOPOLOGY CANVAS === */
+#topology {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 50%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .scroll-indicator {
   position: absolute;
   bottom: 32px; left: 50%;
@@ -1039,6 +1050,7 @@ em { color: var(--text-primary); font-style: italic; }
   :root { --nav-height: 64px; --section-padding: 60px 0; }
   .nav-links { display: none; }
   .nav-toggle { display: flex; }
+  #topology { display: none; }
 
   .portfolio-grid { grid-template-columns: 1fr; }
   .hero-stats { gap: 28px; }
